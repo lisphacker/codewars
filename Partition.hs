@@ -3,6 +3,7 @@ module Codewars.G964.Partition where
 import Data.List (sort, nub)
 import Text.Printf (printf)
 import Control.Monad.State
+import Control.Monad.Extra
 import qualified Data.IntMap as M
 
 part :: Int -> String
@@ -35,6 +36,14 @@ enum' :: Int -> State (M.IntMap [[Int]]) [[Int]]
 enum' 0 = return []
 enum' 1 = return [[1]]
 enum' n = do m <- get
+             if M.member n m
+               then return (m M.! n)
+               else do mconcatMapM enum' recParams
+                       m2 <- get
+                       modify (M.insert n partitionForN)
+                       return partitionForN
+                         where partitionForN = [[n]] ++ concatMap (\x -> map (\l -> x:(m2 M.! x))) recParams
+                               recParams = map (\x -> n - x) [1..(n-1)]
              
 
 enum'' :: Int -> State (M.IntMap [[Int]]) [[Int]]

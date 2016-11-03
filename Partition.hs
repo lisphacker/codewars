@@ -2,7 +2,7 @@ module Codewars.G964.Partition where
 
 import Data.List (sort, nub)
 import Text.Printf (printf)
-import Control.Monad.State
+import Control.Monad.Trans.State
 import Control.Monad.Extra
 import qualified Data.IntMap as M
 
@@ -24,7 +24,7 @@ part n = let prods = prod n in
     
     
 prod :: Int -> [Int]
-prod = nub . sort . map (foldl (\z x -> z * x) 1) . enum
+prod = nub . sort . map (foldl (\z x -> z * x) 1) . enum''
 
 enum :: Int -> [[Int]]
 enum 0 = []
@@ -33,24 +33,21 @@ enum n = [[n]] ++ concatMap (\x -> map (\l -> x:l) (enum (n - x))) [1..(n-1)]
 
 
 enum' :: Int -> State (M.IntMap [[Int]]) [[Int]]
-enum' 0 = return []
-enum' 1 = return [[1]]
+enum' 0 = do modify (M.insert 0 [])
+             return []
+enum' 1 = do modify (M.insert 1 [[1]])
+             return [[1]]
 enum' n = do m <- get
              if M.member n m
                then return (m M.! n)
-               else do mconcatMapM enum' recParams
-                       m2 <- get
-                       modify (M.insert n partitionForN)
-                       return partitionForN
-                         where partitionForN = [[n]] ++ concatMap (\x -> map (\l -> x:(m2 M.! x))) recParams
+               else do foldm (') m recParams  -- mconcatMapM enum' recParams
+               
+                       pm <- get
+                       modify (M.insert n (partitionForN pm))
+                       return (partitionForN pm)
+                         where partitionForN partMap = [[n]] ++ concatMap (\x -> (map (\l -> x:l) (partMap M.! (n - x)))) recParams
                                recParams = map (\x -> n - x) [1..(n-1)]
              
 
-enum'' :: Int -> State (M.IntMap [[Int]]) [[Int]]
-enum'' n  = do
-  m <- get
-  if M.member n m
-    then return (m M.! n)
-    else do s <- enum'' n
-            modify (M.insert n s)
-            return s
+enum'' :: Int -> [[Int]]
+enum'' n = evalState (enum' n) M.empty

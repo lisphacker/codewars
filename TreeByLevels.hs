@@ -12,11 +12,19 @@ treeByLevels maybeNode = bfs [] [maybeNode]
                                      Nothing -> bfs valList r
                                      Just n  -> bfs (valList ++ [value n]) (r ++ [left n, right n])
 
+
+
+----------------------------------------
+
+
+buildTree :: [a] -> Maybe (TreeNode a)
 buildTree []     = Nothing
-buildTree (v:vs) = Just $ TreeNode v (buildTree lvs) (buildTree rvs)
+buildTree (v:vs) = Just $ TreeNode (buildTree lvs) (buildTree rvs) v
   where (lvs, rvs) = splitAt ((length vs + 1) `div` 2) vs
+
 
 tree = buildTree [2, 8, 9, 1, 3, 4, 5]
 
 t1 = buildTree [2, 8, 9]
 t2 = buildTree [2, 8, 9, 1, 3]
+t3 = buildTree [2, 8, 9, 1, 3, 4, 5]

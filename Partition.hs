@@ -2,9 +2,11 @@ module Codewars.G964.Partition where
 
 import Data.List (sort, nub)
 import Text.Printf (printf)
+import Control.Monad
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
-import Control.Monad.Extra
 import qualified Data.IntMap as M
+import Debug.Trace
 
 part :: Int -> String
 part n = let prods = prod n in
@@ -24,30 +26,23 @@ part n = let prods = prod n in
     
     
 prod :: Int -> [Int]
-prod = nub . sort . map (foldl (\z x -> z * x) 1) . enum''
+prod = nub . sort . map (foldl (*) 1) . enum
+
+enumSlow :: Int -> [[Int]]
+enumSlow 0 = []
+enumSlow 1 = [[1]]
+enumSlow n = [[n]] ++ concatMap (\x -> map (\l -> x:l) (enumSlow (n - x))) [1..(n-1)]
 
 enum :: Int -> [[Int]]
-enum 0 = []
-enum 1 = [[1]]
-enum n = [[n]] ++ concatMap (\x -> map (\l -> x:l) (enum (n - x))) [1..(n-1)]
-
+enum n = evalState (enum' n) (M.fromList [(0, []), (1, [[1]])])
 
 enum' :: Int -> State (M.IntMap [[Int]]) [[Int]]
-enum' 0 = do modify (M.insert 0 [])
-             return []
-enum' 1 = do modify (M.insert 1 [[1]])
-             return [[1]]
 enum' n = do m <- get
              if M.member n m
                then return (m M.! n)
-               else do foldm (') m recParams  -- mconcatMapM enum' recParams
-               
-                       pm <- get
-                       modify (M.insert n (partitionForN pm))
-                       return (partitionForN pm)
-                         where partitionForN partMap = [[n]] ++ concatMap (\x -> (map (\l -> x:l) (partMap M.! (n - x)))) recParams
-                               recParams = map (\x -> n - x) [1..(n-1)]
-             
-
-enum'' :: Int -> [[Int]]
-enum'' n = evalState (enum' n) M.empty
+               else do mapM_ enum' recParams
+                       m' <- get
+                       modify (M.insert n (partitionForN m'))
+                       return (partitionForN m')
+                         where partitionForN partMap = [[n]] ++ concatMap (\x -> (map (\l -> x:l) (filter ((>=) x . head) (partMap M.! (n - x))))) recParams
+                               recParams = reverse [1..n-1]
